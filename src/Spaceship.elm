@@ -29,7 +29,7 @@ initialShip =
 
 update : Int -> Model -> Model
 update x ship =
-  { ship | position = ship.position + x }
+  { ship | position = ship.position + (x * 8) }
 
 
 -- VIEW
