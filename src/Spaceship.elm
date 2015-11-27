@@ -27,9 +27,30 @@ initialShip =
 
 -- UPDATE
 
-update : Int -> Model -> Model
-update x ship =
-  { ship | position = ship.position + (x * 8) }
+type Action = NoOp | Move Int | Fire Bool | Tick
+
+update : Action -> Model -> Model
+update action ship =
+  case action of
+    NoOp ->
+      ship
+    Move x ->
+      { ship | position = ship.position + (x * 8) }
+    Fire firing ->
+      let
+        newPowerLevel =
+          if firing then ship.powerLevel - 1 else ship.powerLevel
+      in
+        { ship |
+            isFiring = firing,
+            powerLevel = newPowerLevel
+        }
+    Tick ->
+      let
+        newPowerLevel =
+          if ship.powerLevel < 10 then ship.powerLevel + 1 else ship.powerLevel
+      in
+        { ship | powerLevel = newPowerLevel }
 
 
 -- VIEW
@@ -65,17 +86,30 @@ view (w, h) ship =
 
 -- SIGNALS
 
-direction : Signal Int
+ticker : Signal Action
+ticker =
+  Signal.map (always Tick) (Time.every Time.second)
+
+fire : Signal Action
+fire =
+  Signal.map Fire Keyboard.space
+
+direction : Signal Action
 direction =
   let
     x = Signal.map .x Keyboard.arrows
     delta = Time.fps 30
   in
-    Signal.sampleOn delta x
+    Signal.sampleOn delta (Signal.map Move x)
+
+input : Signal Action
+input =
+  Signal.mergeMany [direction, fire, ticker]
 
 model : Signal Model
 model =
-  Signal.foldp update initialShip direction
+  Signal.foldp update initialShip input
+
 
 main : Signal Element
 main =
